@@ -1,0 +1,58 @@
+# 必要なライブラリのインストール
+!pip install janome
+!pip install gensim
+!pip install pandas
+
+import pandas as pd
+from janome.tokenizer import Tokenizer
+from gensim.models import Word2Vec
+from collections import Counter
+
+# 日本語のトークナイザーを初期化
+tokenizer = Tokenizer()
+
+# 歌詞データ
+lyrics = """
+いつからか時間が止まっていた
+右に左に音の波の中
+これでいいかとうなづいたときに
+あいつ変だと指をさされたよ
+もう戻れない場所を思うときに
+もう会えない人を思うときに
+アンプ蹴ったらギャンギャン泣いた
+１５ワットの小さな世界が
+アンプを蹴りとばしたんだ
+アンプを蹴りとばしたんだ
+ギャンギャンないた　ギャンギャンないて
+ディストーション、壁を叩いた
+"""
+
+# 歌詞を行ごとに分割
+lines = lyrics.strip().split("\n")
+
+# 歌詞をトークン化し、名詞を抽出
+tokenized_lyrics = []
+for line in lines:
+    tokens = tokenizer.tokenize(line, wakati=True)  # トークン化
+    tokenized_lyrics.append(list(tokens))  # リストに追加（トークンをリスト化）
+
+# Word2Vecモデルの訓練
+model = Word2Vec(sentences=tokenized_lyrics, vector_size=100, window=5, min_count=1, workers=4)
+
+# 単語のリストを取得
+words = list(model.wv.index_to_key)
+
+# 単語間の類似度を計算し、メッセージボトルを探る
+def get_similar_words(word, top_n=5):
+    if word in model.wv:
+        return model.wv.most_similar(word, topn=top_n)
+    else:
+        return []
+
+# 特定の単語に対しての類似単語を調べる
+test_words = ['時間', '音', '場所', '人', 'アンプ']  # 関心のある単語
+for word in test_words:
+    similar = get_similar_words(word)
+    print(f"\nSimilar words to '{word}':")
+    for sim_word, sim_score in similar:
+        print(f"{sim_word}: {sim_score:.4f}")
