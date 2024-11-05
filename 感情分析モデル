@@ -1,0 +1,96 @@
+# 必要なライブラリのインストール
+!pip install -q numpy pandas tensorflow nltk transformers
+
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Input, LSTM, Dense, Embedding, AdditiveAttention, Lambda
+from transformers import pipeline
+import nltk
+
+# punktデータセットのダウンロード（トークン化に必要）
+nltk.download('punkt')
+
+# サンプル歌詞データ
+lyrics = [
+    "The sound of guitar echoes through the night",
+    "An amplifier with an op-amp brings clarity",
+    "Playing guitar with powerful chords",
+    "The op-amp circuit shapes the guitar tone",
+    "Guitar solos are full of emotion",
+    "The music fills the room with power",
+    "Soft melodies touch the soul",
+    "A heartfelt ballad sung with love",
+    "Intense rock riffs energize the crowd",
+    "Soothing acoustic harmonies calm the mind"
+]
+
+# 感情分析モデルのロード
+sentiment_analyzer = pipeline("sentiment-analysis")
+
+# 感情分析結果の保存
+sentiment_scores = []
+for line in lyrics:
+    result = sentiment_analyzer(line)[0]
+    sentiment_scores.append((line, result['label'], result['score']))
+
+# 感情スコアの表示
+print("=== Sentiment Analysis Results ===")
+for line, label, score in sentiment_scores:
+    print(f"{line} - Sentiment: {label}, Score: {score}")
+
+# Sequence-to-Sequenceモデルの定義
+max_sequence_len = 20  # シーケンス長（適宜調整）
+vocab_size = 1000      # 語彙数（サンプル用）
+
+# エンコーダの入力とEmbeddingレイヤー
+encoder_inputs = Input(shape=(max_sequence_len,))
+encoder_embedding = Embedding(vocab_size, 64)(encoder_inputs)
+encoder_lstm, state_h, state_c = LSTM(64, return_state=True)(encoder_embedding)
+encoder_states = [state_h, state_c]
+
+# デコーダの入力、EmbeddingレイヤーとLSTM
+decoder_inputs = Input(shape=(max_sequence_len,))
+decoder_embedding = Embedding(vocab_size, 64)(decoder_inputs)
+decoder_lstm = LSTM(64, return_sequences=True, return_state=True)
+decoder_outputs, _, _ = decoder_lstm(decoder_embedding, initial_state=encoder_states)
+
+# AdditiveAttentionの追加（Lambdaレイヤーで次元調整）
+encoder_lstm_expanded = Lambda(lambda x: tf.expand_dims(x, axis=1))(encoder_lstm)
+attention = AdditiveAttention()
+attention_output = attention([decoder_outputs, encoder_lstm_expanded])
+
+# 出力層
+decoder_dense = Dense(vocab_size, activation='softmax')
+outputs = decoder_dense(attention_output)
+
+# Sequence-to-Sequenceモデルの作成
+model = Model([encoder_inputs, decoder_inputs], outputs)
+model.compile(optimizer='adam', loss='categorical_crossentropy')
+
+print("\n=== Sequence-to-Sequence Model with Additive Attention ===")
+model.summary()
+
+# データのダミー入力例（サンプル用に適宜生成）
+encoder_input_data = np.random.randint(0, vocab_size, size=(len(lyrics), max_sequence_len))
+decoder_input_data = np.random.randint(0, vocab_size, size=(len(lyrics), max_sequence_len))
+decoder_output_data = np.random.rand(len(lyrics), max_sequence_len, vocab_size)
+
+# モデルのトレーニング（デモ用にエポックを少なく設定）
+model.fit([encoder_input_data, decoder_input_data], decoder_output_data, epochs=5)
+
+# 感情変化と注意の可視化
+import matplotlib.pyplot as plt
+
+# 感情スコア（ポジティブ/ネガティブ）を可視化
+sentiment_labels = [score[1] for score in sentiment_scores]
+sentiment_values = [score[2] if score[1] == "POSITIVE" else -score[2] for score in sentiment_scores]
+
+plt.figure(figsize=(10, 5))
+plt.plot(range(len(sentiment_values)), sentiment_values, marker='o')
+plt.title("Sentiment Analysis Over Lyrics")
+plt.xlabel("Lyric Line")
+plt.ylabel("Sentiment Score")
+plt.xticks(range(len(sentiment_values)), [line[0] for line in sentiment_scores], rotation=90)
+plt.show()
