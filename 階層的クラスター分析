@@ -1,0 +1,56 @@
+# Necessary libraries installation
+!pip install janome
+!pip install gensim
+!pip install matplotlib
+!pip install scipy
+
+import numpy as np
+import pandas as pd
+from gensim.models import Word2Vec
+import matplotlib.pyplot as plt
+from scipy.cluster.hierarchy import dendrogram, linkage
+
+# English lyrics
+lyrics = """
+Since when has time stopped?
+In the waves of sound, left and right
+When I nodded and thought this was fine
+They pointed and said something was strange
+When I think of the place I can't go back to
+When I think of the people I can't meet
+Kicked the amp and it cried out loudly
+In a small world of 15 watts
+I kicked the amp
+I kicked the amp
+It cried out loudly, it cried out loudly
+Distortion hit the wall
+"""
+
+# Split lyrics into lines
+lines = lyrics.strip().split("\n")
+
+# Tokenize the lyrics
+tokenized_lyrics = [line.split() for line in lines]  # Simple whitespace tokenization
+
+# Train the Word2Vec model
+model = Word2Vec(sentences=tokenized_lyrics, vector_size=100, window=5, min_count=1, workers=4)
+
+# Obtain vectors for each line
+line_vectors = []
+for tokens in tokenized_lyrics:
+    line_vector = np.mean([model.wv[token] for token in tokens if token in model.wv], axis=0)
+    line_vectors.append(line_vector)
+
+# Remove NaN entries (if all tokens are not in the model)
+line_vectors = np.array([vec for vec in line_vectors if vec is not None])
+
+# Perform hierarchical clustering
+Z = linkage(line_vectors, method='ward')
+
+# Plot the dendrogram
+plt.figure(figsize=(10, 7))
+dendrogram(Z, labels=lines, orientation='right')
+plt.title("Hierarchical Clustering Dendrogram")
+plt.xlabel("Distance")
+plt.ylabel("Lyrics")
+plt.show()
