@@ -1,0 +1,63 @@
+# 必要なライブラリのインストール
+!pip install janome
+!pip install pandas
+!pip install scikit-learn
+
+import numpy as np
+import pandas as pd
+from janome.tokenizer import Tokenizer
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error
+
+# 日本語のトークナイザーを初期化
+tokenizer = Tokenizer()
+
+# 歌詞データ
+lyrics = """
+いつからか時間が止まっていた
+右に左に音の波の中
+これでいいかとうなづいたときに
+あいつ変だと指をさされたよ
+もう戻れない場所を思うときに
+もう会えない人を思うときに
+アンプ蹴ったらギャンギャン泣いた
+１５ワットの小さな世界が
+アンプを蹴りとばしたんだ
+アンプを蹴りとばしたんだ
+ギャンギャンないた　ギャンギャンないて
+ディストーション、壁を叩いた
+"""
+
+# 歌詞を行ごとに分割
+lines = lyrics.strip().split("\n")
+
+# トークナイザーを使って歌詞をトークン化し、印象語をリスト化
+impression_words = ['時間', '音', '戻れない', '会えない', 'アンプ', '泣いた', 'ディストーション']  # 印象語のリスト
+
+# 各印象語の出現回数をカウント
+word_counts = {word: [] for word in impression_words}
+
+for line in lines:
+    tokens = list(tokenizer.tokenize(line, wakati=True))  # トークン化しリスト化
+    line_vector = [tokens.count(word) for word in impression_words]  # 各印象語のカウント
+    for word, count in zip(impression_words, line_vector):
+        word_counts[word].append(count)
+
+# DataFrameに変換
+df = pd.DataFrame(word_counts)
+
+# 目的変数（例として行のインデックスを使用）
+y = np.arange(len(lines))
+
+# 重回帰モデルの訓練
+model = LinearRegression()
+model.fit(df, y)
+
+# 予測値を計算
+y_pred = model.predict(df)
+
+# RMSEの計算
+rmse = np.sqrt(mean_squared_error(y, y_pred))
+
+# 結果の表示
+print(f"印象語ごとの重回帰分析のRMSE: {rmse:.4f}")
