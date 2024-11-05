@@ -1,0 +1,86 @@
+# Install Japanese font
+!apt-get -y install fonts-ipafont-gothic
+
+# Import required libraries
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
+import matplotlib.pyplot as plt
+import matplotlib.font_manager as fm
+import spacy
+import numpy as np
+
+# Load Japanese language model for spaCy
+!python -m spacy download ja_core_news_sm
+nlp = spacy.load('ja_core_news_sm')
+
+# Set Japanese font for matplotlib
+font_path = "/usr/share/fonts/opentype/ipafont-gothic/ipagp.ttf"  # Path to Japanese font
+fontprop = fm.FontProperties(fname=font_path)
+
+# Sample lyrics text
+lyrics = """
+いつからか時間が止まっていた
+右に左に音の波の中
+これでいいかとうなづいたときに
+あいつ変だと指をさされたよ
+もう戻れない場所を思うときに
+もう会えない人を思うときに
+アンプ蹴ったらギャンギャン泣いた
+１５ワットの小さな世界が
+アンプを蹴りとばしたんだ
+ギャンギャンないた ギャンギャンないて
+ディストーション、壁を叩いた
+血管切れる音がして
+オルドバイからブルジョイドバイスまで
+アンディ、言っていた
+アンディ、帰りたいと叫んでいたんだよ
+"""
+
+# Function to preprocess text and get word vectors
+def get_word_vectors(text, model):
+    # Process text and extract nouns, verbs, and adjectives
+    doc = nlp(text)
+    tokens = [token for token in doc if token.pos_ in ['NOUN', 'VERB', 'ADJ']]
+    
+    # Get word vectors for each token
+    word_vectors = np.array([token.vector for token in tokens if token.has_vector])
+    words = [token.text for token in tokens if token.has_vector]
+    
+    return words, word_vectors
+
+# Get word vectors from lyrics
+words, word_vectors = get_word_vectors(lyrics, nlp)
+
+# Dimensionality reduction using PCA to 3D
+pca = PCA(n_components=3)
+pca_result = pca.fit_transform(word_vectors)
+
+# Dimensionality reduction using t-SNE to 2D with adjusted perplexity
+tsne = TSNE(n_components=2, perplexity=2, random_state=42)
+tsne_result = tsne.fit_transform(word_vectors)
+
+# Visualization: PCA in 3D
+fig = plt.figure(figsize=(10, 5))
+ax = fig.add_subplot(121, projection='3d')
+ax.scatter(pca_result[:, 0], pca_result[:, 1], pca_result[:, 2])
+
+for i, word in enumerate(words):
+    ax.text(pca_result[i, 0], pca_result[i, 1], pca_result[i, 2], word, fontproperties=fontprop)
+
+ax.set_title("3D PCA of Word Vectors", fontproperties=fontprop)
+ax.set_xlabel("PCA Component 1", fontproperties=fontprop)
+ax.set_ylabel("PCA Component 2", fontproperties=fontprop)
+ax.set_zlabel("PCA Component 3", fontproperties=fontprop)
+
+# Visualization: t-SNE in 2D
+plt.subplot(122)
+plt.scatter(tsne_result[:, 0], tsne_result[:, 1])
+
+for i, word in enumerate(words):
+    plt.text(tsne_result[i, 0], tsne_result[i, 1], word, fontproperties=fontprop)
+
+plt.title("2D t-SNE of Word Vectors", fontproperties=fontprop)
+plt.xlabel("t-SNE Component 1", fontproperties=fontprop)
+plt.ylabel("t-SNE Component 2", fontproperties=fontprop)
+
+plt.show()
