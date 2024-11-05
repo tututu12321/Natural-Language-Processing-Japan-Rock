@@ -1,0 +1,42 @@
+# 必要なライブラリをインストール
+!pip install transformers gensim fugashi unidic-lite matplotlib torch torchtext
+
+# ライブラリのインポート
+import fugashi
+from sklearn.decomposition import PCA
+from gensim.models import Word2Vec
+
+# fugashiの初期化
+tagger = fugashi.Tagger()
+
+# 日本語歌詞
+lyrics = [
+    "いつからか時間が止まっていた",
+    "右に左に音の波の中",
+    "これでいいかとうなづいたときに",
+    "あいつ変だと指をさされたよ",
+    "もう戻れない場所を思うときに",
+    "もう会えない人を思うときに",
+    "アンプ蹴ったらギャンギャン泣いた",
+    "１５ワットの小さな世界が",
+    "アンプを蹴りとばしたんだ",
+    "ディストーション、壁を叩いた"
+]
+
+# Word2Vecのために日本語の歌詞をトークン化
+tokenized_lyrics = [[word.surface for word in tagger(lyric)] for lyric in lyrics]
+
+# ステップ1: Word2Vec 埋め込み
+w2v_model = Word2Vec(sentences=tokenized_lyrics, vector_size=100, min_count=1, window=5)
+word2vec_embeddings = [w2v_model.wv[word] for word in w2v_model.wv.index_to_key]
+
+# 次元削減 (PCAを使用して2次元に)
+pca = PCA(n_components=2)
+pca_result = pca.fit_transform(word2vec_embeddings)
+
+# 各単語とその座標を表示
+coordinates = {word: (pca_result[i, 0], pca_result[i, 1]) for i, word in enumerate(w2v_model.wv.index_to_key)}
+
+# 結果を表示
+for word, coord in coordinates.items():
+    print(f"{word}: ({coord[0]:.4f}, {coord[1]:.4f})")
