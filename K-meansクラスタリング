@@ -1,0 +1,80 @@
+# 必要なライブラリのインストール
+!pip install janome
+!pip install gensim
+!pip install matplotlib
+!pip install scikit-learn
+
+import numpy as np
+import pandas as pd
+from janome.tokenizer import Tokenizer
+from gensim.models import Word2Vec
+from sklearn.cluster import KMeans
+import matplotlib.pyplot as plt
+
+# 日本語のトークナイザーを初期化
+tokenizer = Tokenizer()
+
+# 歌詞データ
+lyrics = """
+いつからか時間が止まっていた
+右に左に音の波の中
+これでいいかとうなづいたときに
+あいつ変だと指をさされたよ
+もう戻れない場所を思うときに
+もう会えない人を思うときに
+アンプ蹴ったらギャンギャン泣いた
+１５ワットの小さな世界が
+アンプを蹴りとばしたんだ
+アンプを蹴りとばしたんだ
+ギャンギャンないた　ギャンギャンないて
+ディストーション、壁を叩いた
+"""
+
+# 歌詞を行ごとに分割
+lines = lyrics.strip().split("\n")
+
+# 歌詞をトークン化し、名詞を抽出
+tokenized_lyrics = []
+for line in lines:
+    tokens = tokenizer.tokenize(line, wakati=True)  # トークン化
+    tokenized_lyrics.append(list(tokens))  # リストに追加
+
+# Word2Vecモデルの訓練
+model = Word2Vec(sentences=tokenized_lyrics, vector_size=100, window=5, min_count=1, workers=4)
+
+# 各行のベクトルを取得
+line_vectors = []
+for tokens in tokenized_lyrics:
+    line_vector = np.mean([model.wv[token] for token in tokens if token in model.wv], axis=0)
+    line_vectors.append(line_vector)
+
+# NaNを含む行を削除（すべてのトークンがモデルに存在しない場合）
+line_vectors = np.array([vec for vec in line_vectors if vec is not None])
+
+# K-meansクラスタリング
+n_clusters = 3  # クラスタ数の設定
+kmeans = KMeans(n_clusters=n_clusters, random_state=0)
+kmeans.fit(line_vectors)
+
+# 各行のクラスタラベルを取得
+labels = kmeans.labels_
+
+# クラスタごとの歌詞を表示
+for i in range(n_clusters):
+    print(f"\nCluster {i + 1}:")
+    for line, label in zip(lines, labels):
+        if label == i:
+            print(f" - {line}")
+
+# 単語とそのベクトル座標の表示
+print("\nWord Vectors:")
+for word in model.wv.index_to_key:
+    vector = model.wv[word]
+    print(f"{word}: {vector[:5]}")  # ベクトルの最初の5次元を表示
+
+# K-meansの可視化（オプション）
+plt.scatter(line_vectors[:, 0], line_vectors[:, 1], c=labels, cmap='rainbow')
+plt.title("K-means Clustering of Lyrics")
+plt.xlabel("Dimension 1")
+plt.ylabel("Dimension 2")
+plt.show()
