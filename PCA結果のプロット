@@ -1,0 +1,77 @@
+# 必要なライブラリのインストール
+!pip install gensim
+!pip install scikit-learn
+!pip install matplotlib
+
+import numpy as np
+from janome.tokenizer import Tokenizer
+from gensim.models import Word2Vec
+from sklearn.decomposition import PCA
+import matplotlib.pyplot as plt
+
+# 日本語のトークナイザーを初期化
+tokenizer = Tokenizer()
+
+# 英語の歌詞データ
+lyrics = """
+Since when has time stopped?
+In the waves of sound, left and right
+When I nodded and thought this was fine
+They pointed and said something was strange
+When I think of the place I can’t go back to
+When I think of the people I can’t meet
+Kicked the amp and it cried out loudly
+In a small world of 15 watts
+I kicked the amp
+I kicked the amp
+It cried out loudly, it cried out loudly
+Distortion hit the wall
+"""
+
+# 歌詞を行ごとに分割
+lines = lyrics.strip().split("\n")
+
+# 歌詞をトークン化
+tokenized_lyrics = [line.split() for line in lines]  # 単語に分割
+
+# Word2Vecモデルの訓練
+model = Word2Vec(sentences=tokenized_lyrics, vector_size=100, window=5, min_count=1, workers=4)
+
+# 単語のリストを作成
+words_to_check = ['amp', 'distortion']
+
+# アンプとディストーションのベクトルを取得
+vectors = []
+for word in words_to_check:
+    if word in model.wv:
+        vectors.append(model.wv[word])  # 単語のベクトルを取得
+    else:
+        print(f"Warning: The word '{word}' is not in the model vocabulary.")
+
+# ベクトルを配列に変換（存在するベクトルのみ）
+if vectors:
+    vectors = np.array(vectors)
+
+    # Check the shape of vectors and adjust n_components if needed
+    n_samples, n_features = vectors.shape
+    n_components = min(2, min(n_samples, n_features))  # Adjust n_components to 2 if possible, otherwise lower
+    pca = PCA(n_components=n_components)  
+
+    pca_result = pca.fit_transform(vectors)
+
+    # 結果の表示
+    print("PCA結果:")
+    for i, word in enumerate(words_to_check):
+        print(f"{word}: {pca_result[i]}")
+
+    # PCA結果のプロット
+    plt.scatter(pca_result[:, 0], pca_result[:, 1])
+    for i, word in enumerate(words_to_check):
+        plt.annotate(word, xy=(pca_result[i, 0], pca_result[i, 1]), textcoords="offset points", xytext=(0,10), ha='center')
+    plt.title('PCA Result of Words')
+    plt.xlabel('Principal Component 1')
+    plt.ylabel('Principal Component 2')
+    plt.grid()
+    plt.show()
+else:
+    print("No valid vectors to process.")
