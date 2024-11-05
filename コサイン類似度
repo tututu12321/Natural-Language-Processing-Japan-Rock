@@ -1,0 +1,87 @@
+# 日本語フォントのインストール
+!apt-get -y install fonts-ipafont-gothic
+
+# Matplotlibに日本語フォントを設定
+import matplotlib.pyplot as plt
+import matplotlib.font_manager as fm
+
+# 日本語フォントの設定
+font_path = "/usr/share/fonts/opentype/ipafont-gothic/ipagp.ttf"  # 日本語フォントのパス
+fontprop = fm.FontProperties(fname=font_path)
+
+# 日本語を表示するためのBERTとPCAを使ったコード
+from transformers import BertJapaneseTokenizer, BertModel
+import torch
+from sklearn.decomposition import PCA
+import numpy as np
+from mpl_toolkits.mplot3d import Axes3D
+from sklearn.metrics.pairwise import cosine_similarity
+
+# BERTモデルとトークナイザーの読み込み
+tokenizer = BertJapaneseTokenizer.from_pretrained("cl-tohoku/bert-base-japanese")
+model = BertModel.from_pretrained("cl-tohoku/bert-base-japanese")
+
+# 歌詞テキスト
+lyrics = """
+いつからか時間が止まっていた
+右に左に音の波の中
+これでいいかとうなづいたときに
+あいつ変だと指をさされたよ
+もう戻れない場所を思うときに
+もう会えない人を思うときに
+アンプ蹴ったらギャンギャン泣いた
+１５ワットの小さな世界が
+
+アンプを蹴りとばしたんだ
+アンプを蹴りとばしたんだ
+ギャンギャンないた　ギャンギャンないて
+ディストーション、壁を叩いた
+血管切れる音がして
+オルドバイからブルジョイドバイスまで
+アンディ、言っていた
+アンディ、帰りたいと叫んでいたんだよ
+"""
+
+# 各単語をベクトル化
+def get_embedding(word):
+    tokens = tokenizer(word, return_tensors="pt")
+    with torch.no_grad():
+        outputs = model(**tokens)
+    return outputs.last_hidden_state[:, 0, :].numpy().flatten()
+
+# 歌詞内の特定単語を三次元ベクトル化
+words = ["アンプ", "ディストーション", "ギャンギャン", "泣いた", "叫んでいた"]
+embeddings = np.array([get_embedding(word) for word in words])
+
+# PCAで三次元に次元削減
+pca = PCA(n_components=3)
+embeddings_3d = pca.fit_transform(embeddings)
+
+# 3Dプロットの作成
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+
+# 各単語のプロット
+for word, vector in zip(words, embeddings_3d):
+    ax.scatter(vector[0], vector[1], vector[2], label=word)
+    ax.text(vector[0], vector[1], vector[2], word, fontproperties=fontprop)
+
+# 軸ラベル設定
+ax.set_xlabel("PCA Component 1", fontproperties=fontprop)
+ax.set_ylabel("PCA Component 2", fontproperties=fontprop)
+ax.set_zlabel("PCA Component 3", fontproperties=fontprop)
+plt.title("3D Plot of Word Embeddings", fontproperties=fontprop)
+
+# 凡例を表示
+plt.legend(prop=fontprop)
+plt.show()
+
+# コサイン類似度の計算
+similarities = cosine_similarity(embeddings)
+
+# コサイン類似度の表示
+print("コサイン類似度:")
+for i, word1 in enumerate(words):
+    for j, word2 in enumerate(words):
+        if i < j:  # 同じ組み合わせの表示を避ける
+            print(f"{word1} と {word2} の類似度: {similarities[i][j]:.2f}")
