@@ -1,0 +1,53 @@
+
+
+# 必要なライブラリのインストール
+!pip install wordcloud matplotlib  # ワードクラウド生成とグラフ描画のためのライブラリをインストール
+
+# 日本語フォント（Noto Sans JP）をダウンロード
+# 日本語テキストのワードクラウド表示には、日本語フォントが必要です
+!wget -O /usr/share/fonts/noto-sans-cjk-jp.zip https://noto-website-2.storage.googleapis.com/pkgs/NotoSansCJKjp-hinted.zip
+!unzip -j /usr/share/fonts/noto-sans-cjk-jp.zip -d /usr/share/fonts/ -x "*LICENSE*" "*README*" "*FAQ*"
+
+# ライブラリのインポート
+from wordcloud import WordCloud  # ワードクラウド生成用のライブラリ
+import matplotlib.pyplot as plt  # 生成したワードクラウドを表示するためのライブラリ
+
+# 歌詞のテキストを変数に格納
+# ワードクラウドに使用する日本語の歌詞を文字列として定義
+lyrics = """
+いつからか時間が止まっていた
+右に左に音の波の中
+これでいいかとうなづいたときに
+あいつ麦だと指をさされたよ
+もう戻れない場所を思うときに
+もう会えない人を思うときに
+アンプ蹴ったらギャンギャン泣いた
+１５ワットの小さな世界が
+
+アンプを蹴りとばしたんだ
+アンプを蹴りとばしたんだ
+ギャンギャンないた　ギャンギャンないて
+ディストーション、壁を叩いた
+血管切れる音がして
+オルドバイからブルジョイドバイスまで
+アンディ、言っていた
+アンディ、帰りたいと叫んでいたんだよ
+"""
+
+# ワードクラウドの設定と生成
+# WordCloudクラスでワードクラウドを作成する設定を行う
+# font_path: 日本語フォントへのパスを指定（日本語テキストの表示に必須）
+# widthとheight: 画像サイズを指定（今回は800x400ピクセル）
+# background_color: 背景色を指定（今回は白色）
+wordcloud = WordCloud(
+    font_path='/usr/share/fonts/NotoSansCJKjp-Regular.otf',  # 日本語フォントパス
+    width=800, height=400,  # 画像サイズ
+    background_color='white'  # 背景色
+).generate(lyrics)  # 歌詞テキストからワードクラウドを生成
+
+# ワードクラウドの表示
+# matplotlibの関数を用いて、生成したワードクラウドを表示
+plt.figure(figsize=(10, 5))  # グラフサイズを指定
+plt.imshow(wordcloud, interpolation='bilinear')  # ワードクラウド画像を表示
+plt.axis('off')  # 軸を非表示にする（余計な線や数字を消すため）
+plt.show()  # 画像を出力して表示
