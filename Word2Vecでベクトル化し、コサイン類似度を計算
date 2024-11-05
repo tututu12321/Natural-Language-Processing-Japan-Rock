@@ -1,0 +1,55 @@
+import numpy as np
+import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+from gensim.models import Word2Vec
+from nltk.tokenize import word_tokenize
+from scipy.spatial.distance import cosine
+import nltk
+
+# punktデータセットのダウンロード
+nltk.download('punkt')
+
+# サンプル歌詞データ（「ギター」と「オペアンプ」に関連する歌詞）
+lyrics = [
+    "The sound of guitar echoes through the night",
+    "An amplifier with an op-amp brings clarity",
+    "Playing guitar with powerful chords",
+    "The op-amp circuit shapes the guitar tone"
+]
+
+# 1. TF-IDFでベクトル化し、コサイン類似度を計算
+print("=== TF-IDF Cosine Similarity ===")
+vectorizer_tfidf = TfidfVectorizer()
+tfidf_matrix = vectorizer_tfidf.fit_transform(lyrics)
+cosine_sim_tfidf = cosine_similarity(tfidf_matrix)
+
+# TF-IDFのコサイン類似度結果をデータフレームで表示
+tfidf_cosine_df = pd.DataFrame(cosine_sim_tfidf, index=lyrics, columns=lyrics)
+print(tfidf_cosine_df)
+
+# 2. Word2Vecでベクトル化し、コサイン類似度を計算
+print("\n=== Word2Vec Cosine Similarity ===")
+# 各歌詞をトークン化
+tokenized_lyrics = [word_tokenize(sentence.lower()) for sentence in lyrics]
+# Word2Vecモデルの学習
+model_word2vec = Word2Vec(sentences=tokenized_lyrics, vector_size=100, window=5, min_count=1, workers=4)
+
+# 各歌詞をベクトルに変換する関数（各単語のベクトルの平均を取る）
+def get_sentence_vector(sentence, model):
+    words = word_tokenize(sentence.lower())
+    word_vectors = [model.wv[word] for word in words if word in model.wv]
+    if word_vectors:
+        return np.mean(word_vectors, axis=0)
+    else:
+        return np.zeros(model.vector_size)
+
+# 各歌詞のベクトルを計算
+sentence_vectors = [get_sentence_vector(sentence, model_word2vec) for sentence in lyrics]
+
+# Word2Vecのコサイン類似度を計算
+cosine_sim_word2vec = cosine_similarity(sentence_vectors)
+
+# Word2Vecのコサイン類似度結果をデータフレームで表示
+word2vec_cosine_df = pd.DataFrame(cosine_sim_word2vec, index=lyrics, columns=lyrics)
+print(word2vec_cosine_df)
