@@ -1,0 +1,39 @@
+# 必要なライブラリのインストール
+!pip install janome
+!pip install pandas
+
+import pandas as pd
+from janome.tokenizer import Tokenizer
+from collections import Counter
+
+# 日本語のトークナイザーを初期化
+tokenizer = Tokenizer()
+
+# 歌詞データ
+lyrics = """
+いつからか時間が止まっていた
+右に左に音の波の中
+これでいいかとうなづいたときに
+あいつ変だと指をさされたよ
+もう戻れない場所を思うときに
+もう会えない人を思うときに
+アンプ蹴ったらギャンギャン泣いた
+１５ワットの小さな世界が
+アンプを蹴りとばしたんだ
+アンプを蹴りとばしたんだ
+ギャンギャンないた　ギャンギャンないて
+ディストーション、壁を叩いた
+"""
+
+# 歌詞をトークン化し、名詞を抽出
+tokens = [token.surface for token in tokenizer.tokenize(lyrics) if token.part_of_speech.startswith('名詞')]
+
+# 単語の頻度をカウント
+word_counts = Counter(tokens)
+
+# データフレームに変換
+word_freq = pd.DataFrame(word_counts.items(), columns=['Word', 'Frequency'])
+
+# 単語頻度の表示
+print("Word Frequency:")
+print(word_freq.sort_values(by='Frequency', ascending=False))
