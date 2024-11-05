@@ -1,0 +1,66 @@
+# 必要なライブラリのインストール
+!pip install -q numpy pandas scikit-learn nltk
+
+import numpy as np
+import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.cluster import KMeans
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report, accuracy_score
+from sklearn.linear_model import LogisticRegression
+import nltk
+
+# punktデータセットのダウンロード（トークン化に必要）
+nltk.download('punkt')
+
+# サンプル歌詞データとジャンル・アーティストのラベル（例として簡略化）
+data = {
+    "lyrics": [
+        "The sound of guitar echoes through the night",
+        "An amplifier with an op-amp brings clarity",
+        "Playing guitar with powerful chords",
+        "The op-amp circuit shapes the guitar tone",
+        "Guitar solos are full of emotion",
+        "The music fills the room with power",
+        "Soft melodies touch the soul",
+        "A heartfelt ballad sung with love",
+        "Intense rock riffs energize the crowd",
+        "Soothing acoustic harmonies calm the mind"
+    ],
+    "genre": ["rock", "rock", "rock", "rock", "rock", "rock", "pop", "pop", "rock", "pop"],
+    "artist": ["ArtistA", "ArtistA", "ArtistA", "ArtistA", "ArtistB", "ArtistB", "ArtistC", "ArtistC", "ArtistB", "ArtistC"]
+}
+
+# データフレームに変換
+df = pd.DataFrame(data)
+
+# 1. クラスタリング (K-Means) - 歌詞の内容に基づきジャンルアーティストごとにクラスタリング
+print("=== K-Means Clustering ===")
+tfidf_vectorizer = TfidfVectorizer()
+tfidf_matrix = tfidf_vectorizer.fit_transform(df['lyrics'])
+
+# K-meansクラスタリングの実行
+num_clusters = 2  # クラスタ数はジャンルやアーティスト数に応じて設定
+kmeans = KMeans(n_clusters=num_clusters, random_state=42)
+df['cluster'] = kmeans.fit_predict(tfidf_matrix)
+
+# クラスタリング結果の表示
+print(df[['lyrics', 'genre', 'artist', 'cluster']])
+
+# 2. 分類モデル (ロジスティック回帰) - 特定アーティストの特徴を学習して分類
+print("\n=== Logistic Regression Classification ===")
+# ラベルエンコーディング
+df['genre_label'] = df['genre'].astype('category').cat.codes
+df['artist_label'] = df['artist'].astype('category').cat.codes
+
+# 学習用データとテスト用データに分割
+X_train, X_test, y_train, y_test = train_test_split(tfidf_matrix, df['artist_label'], test_size=0.3, random_state=42)
+
+# ロジスティック回帰モデルの訓練
+clf = LogisticRegression(random_state=42, max_iter=100)
+clf.fit(X_train, y_train)
+
+# 予測と評価
+y_pred = clf.predict(X_test)
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print("Classification Report:\n", classification_report(y_test, y_pred))
