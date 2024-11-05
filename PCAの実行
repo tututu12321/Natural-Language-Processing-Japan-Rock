@@ -1,0 +1,61 @@
+# 必要なライブラリのインストール
+!pip install gensim scikit-learn matplotlib
+
+# ライブラリのインポート
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
+from gensim.models import Word2Vec
+
+# ビートルズの歌詞データの定義（例として一部の歌詞を使用）
+lyrics = """
+I get by with a little help from my friends
+I get high with a little help from my friends
+Mm, I’m gonna try with a little help from my friends
+What would you think if I sang out of tune
+Would you stand up and walk out on me
+"""
+
+# トークン化
+tokenized_lyrics = [line.split() for line in lyrics.strip().split('\n')]
+
+# Word2Vecモデルの訓練
+model = Word2Vec(sentences=tokenized_lyrics, vector_size=100, window=5, min_count=1, workers=4)
+
+# 単語のベクトルを取得
+amp_vector = model.wv['amp'] if 'amp' in model.wv else None
+distortion_vector = model.wv['distortion'] if 'distortion' in model.wv else None
+
+# 単語がモデルに存在しない場合の処理
+if amp_vector is None:
+    print("Word 'amp' is not in the vocabulary.")
+if distortion_vector is None:
+    print("Word 'distortion' is not in the vocabulary.")
+
+# 代わりに別の単語を使用することもできます
+sample_words = ['friends', 'help']  # モデルに存在する単語
+word_vectors = np.array([model.wv[word] for word in sample_words if word in model.wv])
+
+# PCAの実行
+pca = PCA(n_components=2)
+pca_result = pca.fit_transform(word_vectors)
+
+# 固有値と固有ベクトルの取得
+eigenvalues = pca.explained_variance_
+eigenvectors = pca.components_
+
+# 結果の表示
+print("PCAの結果:\n", pca_result)
+print("固有値:\n", eigenvalues)
+print("固有ベクトル:\n", eigenvectors)
+
+# 結果のプロット
+plt.figure(figsize=(8, 6))
+plt.scatter(pca_result[:, 0], pca_result[:, 1], color='blue')
+for i, word in enumerate(sample_words):
+    plt.annotate(word, xy=(pca_result[i, 0], pca_result[i, 1]), textcoords="offset points", xytext=(0, 10), ha='center')
+plt.title('PCA of Word Vectors')
+plt.xlabel('Principal Component 1')
+plt.ylabel('Principal Component 2')
+plt.grid()
+plt.show()
