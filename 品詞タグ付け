@@ -1,0 +1,54 @@
+# 必要なライブラリのインストール
+!pip install nltk
+!pip install networkx
+!pip install matplotlib
+
+import nltk
+from nltk.tokenize import word_tokenize
+from nltk import pos_tag
+import networkx as nx
+import matplotlib.pyplot as plt
+
+# NLTKのリソースをダウンロード
+nltk.download('punkt')
+nltk.download('averaged_perceptron_tagger')
+
+# 英語の歌詞データ
+lyrics = """
+Time had stopped for a while
+In the waves of sound, left and right
+When I nodded and thought this was fine
+They pointed and said something was strange
+When I think of the place I can’t go back to
+When I think of the people I can’t meet
+Kicked the amp and it cried out loudly
+In a small world of 15 watts
+I kicked the amp
+I kicked the amp
+It cried out loudly, it cried out loudly
+Distortion hit the wall
+"""
+
+# 英語のトークン化
+tokens = word_tokenize(lyrics)
+
+# 品詞タグ付け
+tagged_tokens = pos_tag(tokens)
+
+# 結果の表示
+print("Tagged Tokens:")
+for token, tag in tagged_tokens:
+    print(f"{token}: {tag}")
+
+# 単語のつながりをネットワーク構造に変換
+G = nx.Graph()
+for i in range(len(tokens) - 1):
+    if tokens[i].isalpha() and tokens[i + 1].isalpha():  # アルファベットのみを対象
+        G.add_edge(tokens[i], tokens[i + 1])
+
+# グラフの可視化
+plt.figure(figsize=(12, 8))
+pos = nx.spring_layout(G, seed=42)  # レイアウトの設定
+nx.draw(G, pos, with_labels=True, node_size=500, node_color="lightblue", font_size=10)
+plt.title("Word Network Structure from Lyrics")
+plt.show()
