@@ -1,0 +1,72 @@
+# 必要なライブラリのインストール
+!pip install gensim scikit-learn spacy
+
+# 必要なライブラリのインポート
+from gensim.corpora.dictionary import Dictionary
+from gensim.models import LdaModel
+from sklearn.decomposition import NMF
+from sklearn.feature_extraction.text import CountVectorizer
+import spacy
+import re
+
+# 日本語の形態素解析モデルのロード
+!python -m spacy download ja_core_news_sm
+nlp = spacy.load("ja_core_news_sm")
+
+# トピックモデリング対象の歌詞データ
+lyrics = """
+いつからか時間が止まっていた
+右に左に音の波の中
+これでいいかとうなづいたときに
+あいつ変だと指をさされたよ
+もう戻れない場所を思うときに
+もう会えない人を思うときに
+アンプ蹴ったらギャンギャン泣いた
+１５ワットの小さな世界が
+
+アンプを蹴りとばしたんだ
+アンプを蹴りとばしたんだ
+ギャンギャンないた　ギャンギャンないて
+ディストーション、壁を叩いた
+血管切れる音がして
+オルドバイからブルジョイドバイスまで
+アンディ、言っていた
+アンディ、帰りたいと叫んでいたんだよ
+"""
+
+# 前処理：歌詞の分かち書き
+def preprocess_text(text):
+    doc = nlp(text)
+    tokens = [token.text for token in doc if token.pos_ in ['NOUN', 'VERB', 'ADJ']]
+    return tokens
+
+# 歌詞の分かち書きを実行
+processed_lyrics = preprocess_text(lyrics)
+
+# Gensimを使ったLDAモデルの適用
+# 辞書とコーパスの作成
+dictionary = Dictionary([processed_lyrics])
+corpus = [dictionary.doc2bow(processed_lyrics)]
+
+# LDAモデルの学習
+lda_model = LdaModel(corpus, num_topics=3, id2word=dictionary, passes=15)
+
+# トピックごとのキーワードを表示
+print("LDAモデルのトピック:")
+for idx, topic in lda_model.print_topics(-1):
+    print(f"トピック {idx+1}: {topic}")
+
+# scikit-learnを使ったNMFモデルの適用
+# カウントベクトライザを使用して単語頻度行列を作成
+vectorizer = CountVectorizer(tokenizer=lambda x: preprocess_text(x), max_features=1000)
+X = vectorizer.fit_transform([lyrics])
+
+# NMFモデルの学習
+nmf_model = NMF(n_components=3, random_state=42)
+nmf_W = nmf_model.fit_transform(X)
+nmf_H = nmf_model.components_
+
+# NMFモデルのトピックを表示
+print("\nNMFモデルのトピック:")
+for idx, topic in enumerate(nmf_H):
+    print(f"トピック {idx+1}: ", [vectorizer.get_feature_names_out()[i] for i in topic.argsort()[-5:]])
