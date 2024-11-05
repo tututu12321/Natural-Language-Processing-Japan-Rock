@@ -1,0 +1,54 @@
+import requests
+from bs4 import BeautifulSoup
+import pandas as pd
+import time
+
+# 曲名と歌詞を格納するデータフレームを用意
+list_df = pd.DataFrame(columns=['曲名', '歌詞'])
+
+# 歌ネットの基本URL
+base_url = 'https://www.uta-net.com'
+# アーティストの歌詞一覧URL（例としてぷにぷに電機のURL）
+url = 'https://www.uta-net.com/artist/29348/'
+
+# シンプルなUser-Agentを設定
+user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
+header = {'User-Agent': user_agent}
+
+# 歌詞一覧のページにリクエストを送信
+response = requests.get(url, headers=header)
+
+# ステータスコードが200（成功）であることを確認
+if response.status_code == 200:
+    response.encoding = response.apparent_encoding  # エンコーディングを設定
+    # HTMLを解析
+    soup = BeautifulSoup(response.text, 'lxml')
+
+    # 曲情報を取得するための要素を特定
+    links = soup.find_all('td', class_='sp-w-100')
+
+    # 歌詞情報を取得します
+    for link in links:
+        song_url = base_url + (link.a.get('href'))  # 曲の詳細ページのURL
+        song_response = requests.get(song_url, headers=header)  # 歌詞ページへのリクエスト
+        
+        if song_response.status_code == 200:
+            song_response.encoding = song_response.apparent_encoding  # エンコーディングを設定
+            song_soup = BeautifulSoup(song_response.text, 'lxml')
+            song_name = song_soup.find('h2').text.strip()  # 曲名の取得
+            
+            # 歌詞の取得
+            song_kashi = song_soup.find('div', id="kashi_area").text.strip()
+            
+            # データフレームに追加
+            tmp_df = pd.DataFrame({'曲名': [song_name], '歌詞': [song_kashi]})
+            list_df = pd.concat([list_df, tmp_df], ignore_index=True)  # pd.concatを使用
+            
+            time.sleep(1)  # リクエストの間隔を開ける
+        else:
+            print(f"Error fetching song page: {song_url}")
+
+    # データフレームを確認します
+    print(list_df)
+else:
+    print("Error fetching artist page:", response.status_code)
