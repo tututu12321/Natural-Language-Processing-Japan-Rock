@@ -1,0 +1,42 @@
+# 必要なライブラリのインストール
+!pip install transformers
+
+# Transformersライブラリからpipelineをインポート
+from transformers import pipeline
+
+# 感情分析パイプラインのセットアップ
+# 日本語の感情分析モデルを使います
+sentiment_analyzer = pipeline("sentiment-analysis", model="cl-tohoku/bert-base-japanese")
+
+# 歌詞のテキストを変数に格納
+lyrics = """
+いつからか時間が止まっていた
+右に左に音の波の中
+これでいいかとうなづいたときに
+あいつ麦だと指をさされたよ
+もう戻れない場所を思うときに
+もう会えない人を思うときに
+アンプ蹴ったらギャンギャン泣いた
+１５ワットの小さな世界が
+
+アンプを蹴りとばしたんだ
+アンプを蹴りとばしたんだ
+ギャンギャンないた　ギャンギャンないて
+ディストーション、壁を叩いた
+血管切れる音がして
+オルドバイからブルジョイドバイスまで
+アンディ、言っていた
+アンディ、帰りたいと叫んでいたんだよ
+"""
+
+# 歌詞の各行をリストに分割
+lyrics_lines = lyrics.split("\n")
+
+# 各行に対する感情分析を行い、ポジティブかネガティブかを判定
+for line in lyrics_lines:
+    if line.strip():  # 空行をスキップ
+        result = sentiment_analyzer(line)[0]  # 各行の分析結果を取得
+        label = "ポジティブ" if result['label'] == "LABEL_1" else "ネガティブ"
+        print(f"歌詞: {line}")
+        print(f"  判定: {label}, 確信度: {result['score']:.2f}")
+        print("-" * 50)
